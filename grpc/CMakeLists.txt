@@ -10,25 +10,6 @@ catkin_package(
   CFG_EXTRAS generate_proto.cmake
 )
 
-find_program(RSYNC rsync)
-if(NOT RSYNC)
-  message(SEND_ERROR "Cannot find rsync.")
-endif(NOT RSYNC)
-
-ExternalProject_Add(
-  build_grpc
-  PREFIX grpc
-  GIT_REPOSITORY "https://github.com/grpc/grpc.git"
-  GIT_TAG v1.34.1
-  GIT_CONFIG submodule.recurse=1 submodule.fetchJobs=10
-  GIT_SHALLOW 1
-  SOURCE_DIR grpc_build
-  CONFIGURE_COMMAND ""
-  BUILD_IN_SOURCE 1
-  BUILD_COMMAND $(MAKE) CONFIG=opt EMBED_ZLIB=true
-  INSTALL_COMMAND ""
-)
-
 set(GRPC_INCLUDE_DESTINATION
     ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_INCLUDE_DESTINATION}/grpc)
 set(GRPC_LIB_DESTINATION
@@ -36,57 +17,34 @@ set(GRPC_LIB_DESTINATION
 set(GRPC_BIN_DESTINATION
     ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_BIN_DESTINATION})
 
-add_custom_command(
-  TARGET build_grpc
-  POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory ${GRPC_INCLUDE_DESTINATION}
-  COMMAND ${CMAKE_COMMAND} -E make_directory ${GRPC_LIB_DESTINATION}
-  COMMAND ${CMAKE_COMMAND} -E make_directory ${GRPC_BIN_DESTINATION}
-  COMMAND
-    ${RSYNC}
-      --prune-empty-dirs --archive
-      ${CMAKE_CURRENT_BINARY_DIR}/grpc_build/libs/opt/
-      ${GRPC_LIB_DESTINATION}/
-  COMMAND
-    ${RSYNC}
-      --prune-empty-dirs --archive
-      ${CMAKE_CURRENT_BINARY_DIR}/grpc_build/bins/opt/
-      ${GRPC_BIN_DESTINATION}/
-  COMMAND
-    ${CMAKE_COMMAND} -E make_directory ${GRPC_INCLUDE_DESTINATION}/src/proto
-  COMMAND
-    ${RSYNC}
-      --prune-empty-dirs --archive
-      --include="*/" --include="*.proto" --exclude="*"
-      ${CMAKE_CURRENT_BINARY_DIR}/grpc_build/src/proto/
-      ${GRPC_INCLUDE_DESTINATION}/src/proto/
-  COMMAND
-    ${RSYNC}
-      --prune-empty-dirs --archive
-      --include="*/" --include="*.h" --exclude="*"
-      ${CMAKE_CURRENT_BINARY_DIR}/grpc_build/gens/src/proto/
-      ${GRPC_INCLUDE_DESTINATION}/src/proto/
-  COMMAND
-    ${RSYNC}
-      --prune-empty-dirs --archive
-      --include="*/" --include="*.h" --exclude="*"
-      ${CMAKE_CURRENT_BINARY_DIR}/grpc_build/include/
-      ${GRPC_INCLUDE_DESTINATION}/
-  COMMAND
-    ${RSYNC}
-      --prune-empty-dirs --archive
-      --include="*/" --include="*.h" --include="*.inc" --include="*.proto" --exclude="*"
-      ${CMAKE_CURRENT_BINARY_DIR}/grpc_build/third_party/protobuf/src/
-      ${GRPC_INCLUDE_DESTINATION}/
+ExternalProject_Add(grpc
+    PREFIX         ${CMAKE_BINARY_DIR}
+    GIT_REPOSITORY https://github.com/grpc/grpc.git
+    GIT_TAG        v1.50.1
+    GIT_SHALLOW    ON
+    GIT_PROGRESS   ON
+    CMAKE_ARGS
+        # -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+        -DgRPC_BUILD_GRPC_PLUGIN=OFF
+        -DgRPC_BUILD_GRPC_CPP_PLUGIN=ON
+        -DgRPC_BUILD_GRPC_CSHARP_PLUGIN=ON
+        -DgRPC_BUILD_GRPC_PHP_PLUGIN=OFF
+        -DgRPC_BUILD_GRPC_NODE_PLUGIN=OFF
+        -DgRPC_BUILD_GRPC_RUBY_PLUGIN=OFF
+        -DgRPC_BUILD_GRPC_OBJECTIVE_C_PLUGIN=OFF
+        -DgRPC_BUILD_GRPC_PYTHON_PLUGIN=ON
+        -DgRPC_INSTALL:BOOL=ON
+        -DgRPC_BUILD_TESTS:BOOL=OFF
+        -DgRPC_INSTALL_BINDIR:STRING=${GRPC_BIN_DESTINATION}
+        -DgRPC_INSTALL_LIBDIR:STRING=${GRPC_LIB_DESTINATION}
+        -DgRPC_INSTALL_INCLUDEDIR:STRING=${GRPC_INCLUDE_DESTINATION}
 )
 
 install(
   DIRECTORY
-    ${GRPC_INCLUDE_DESTINATION}/google
     ${GRPC_INCLUDE_DESTINATION}/grpc
     ${GRPC_INCLUDE_DESTINATION}/grpc++
     ${GRPC_INCLUDE_DESTINATION}/grpcpp
-    ${GRPC_INCLUDE_DESTINATION}/src
   USE_SOURCE_PERMISSIONS
   DESTINATION
     ${CMAKE_INSTALL_PREFIX}/${CATKIN_GLOBAL_INCLUDE_DESTINATION}/grpc)
